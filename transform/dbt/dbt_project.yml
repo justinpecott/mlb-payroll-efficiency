@@ -1,0 +1,25 @@
+name: baseball
+version: "1.0.0"
+
+profile: baseball
+
+seed-paths: ["seeds"]
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+models:
+  baseball:
+    # Materialize staging models as views, and marts as tables
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
+vars:
+  raw_database: BASEBALL
+  raw_schema: RAW

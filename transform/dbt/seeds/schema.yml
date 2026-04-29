@@ -1,0 +1,38 @@
+version: 2
+
+seeds:
+  - name: dim_teams
+    description: >
+      Static lookup table of all 30 MLB teams. Used in team_war_value to join
+      league and division metadata onto team-level payroll efficiency aggregations.
+      One row per team.
+    columns:
+      - name: team_id
+        description: "Canonical team code used in this project (e.g. 'NYY', 'LAD', 'SF', 'TB'). Primary key."
+        tests:
+          - not_null
+          - unique
+      - name: team_name
+        description: "Full team nickname (e.g. 'Yankees', 'Dodgers'). Matches the team name used in Fangraphs payroll data for joining."
+        tests:
+          - not_null
+          - unique
+      - name: abbreviation
+        description: "Team abbreviation as used by Fangraphs (e.g. 'NYY', 'LAD'). May match team_id or differ for teams with non-standard Fangraphs codes."
+        tests:
+          - not_null
+          - unique
+      - name: league
+        description: "League - AL (American League) or NL (National League)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["AL", "NL"]
+      - name: division
+        description: "Division within the league - East, Central, or West."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["East", "Central", "West"]

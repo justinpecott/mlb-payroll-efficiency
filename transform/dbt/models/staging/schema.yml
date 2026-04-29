@@ -1,0 +1,928 @@
+version: 2
+
+models:
+  - name: stg_payroll_players
+    description: >
+      Fangraphs team payroll by player, 2021-2025. Excludes players with 'sa' prefix
+      Fangraphs IDs (international players with no MLB stats) as they cannot be joined
+      to batting or pitching data and do not contribute WAR.
+    columns:
+      - name: player_id
+        description: "Fangraphs player ID. Integer for MLB players, 'sa' prefix for international-only players (excluded)."
+        tests:
+          - not_null
+      - name: player_name
+        description: "Player full name as reported by Fangraphs."
+        tests:
+          - not_null
+      - name: team
+        description: "Team name for the season (e.g. 'Yankees', 'Dodgers')."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_name
+      - name: season
+        description: "MLB season year."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: contract_status
+        description: "Player's contract classification: Guaranteed (signed deal), Eligible For Arb (arbitration-eligible), Not Yet Eligible For Arb (pre-arb), or No Longer On 40-Man Roster."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  [
+                    "Guaranteed",
+                    "Eligible For Arb",
+                    "Not Yet Eligible For Arb",
+                    "No Longer On 40-Man Roster",
+                  ]
+      - name: contract
+        description: "Contract structure string (e.g. '3yr/$75M'). NULL for arb and pre-arb players who are on one-year deals."
+      - name: contract_notes
+        description: "Free-text notes on contract details (renamed from 'info'). Includes options, deferrals, no-trade clauses, and other special terms."
+      - name: service_time
+        description: "MLB service time in years as of the season. Determines arbitration eligibility (3 years) and free agency eligibility (6 years)."
+      - name: age
+        description: "Player age during the season."
+      - name: salary
+        description: "Actual salary paid in the given season."
+      - name: aav
+        description: "Average annual value of the player's contract. NULL for arb and pre-arb players who are on one-year deals."
+      - name: future_salaries
+        description: "VARIANT (JSON array) of future salary obligations remaining on the contract after the current season."
+      - name: source_file
+        description: "Source Excel file name the row was parsed from, for lineage tracing."
+
+  - name: stg_batting
+    description: >
+      Fangraphs player batting stats 2021-2025, sourced from the pybaseball API.
+      One row per player per team per season. Includes all Fangraphs rate stats,
+      Statcast contact metrics, plate discipline, pitch type/value breakdowns, and
+      WAR components. Columns with _sc suffix are Statcast-sourced variants of the
+      same plate discipline metrics; columns with _pi suffix are PITCHf/x-sourced
+      variants. Pitch-by-pitch stuff+/location+/pitching+ grades by pitch type are
+      available in the _sc and _pi column groups.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [player_id, season]
+    columns:
+      - name: player_id
+        description: "Fangraphs player ID (renamed from idfg). VARCHAR to match payroll."
+        tests:
+          - not_null
+      - name: player_name
+        description: "Player full name (renamed from name)."
+        tests:
+          - not_null
+      - name: team
+        description: "Team abbreviation. Players who were traded mid-season appear once per team stint plus a totals row."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: abbreviation
+              config:
+                where: "team not in ('- - -', 'SFG', 'SDP', 'CHW', 'WSN', 'KCR', 'TBR', 'ATH')"
+      - name: season
+        description: "MLB season year."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: age
+        description: "Player age during the season."
+      - name: age_rng
+        description: "Age range bucket (e.g. '25-27') used in Fangraphs aging curve analysis."
+      - name: g
+        description: "Games played."
+      - name: ab
+        description: "At-bats."
+      - name: pa
+        description: "Plate appearances."
+      - name: h
+        description: "Hits."
+      - name: singles
+        description: "Single hits."
+      - name: doubles
+        description: "Double hits."
+      - name: triples
+        description: "Triple hits."
+      - name: hr
+        description: "Home runs."
+      - name: r
+        description: "Runs scored."
+      - name: rbi
+        description: "Runs batted in."
+      - name: bb
+        description: "Walks (base on balls)."
+      - name: ibb
+        description: "Intentional walks."
+      - name: so
+        description: "Strikeouts."
+      - name: hbp
+        description: "Hit by pitch."
+      - name: sf
+        description: "Sacrifice flies."
+      - name: sh
+        description: "Sacrifice hits (bunts)."
+      - name: gdp
+        description: "Grounded into double play."
+      - name: sb
+        description: "Stolen bases."
+      - name: cs
+        description: "Caught stealing."
+      - name: avg
+        description: "Batting average (H/AB)."
+      - name: obp
+        description: "On-base percentage."
+      - name: slg
+        description: "Slugging percentage."
+      - name: ops
+        description: "On-base plus slugging."
+      - name: iso
+        description: "Isolated power (SLG - AVG). Measures extra-base hit ability independent of singles."
+      - name: babip
+        description: "Batting average on balls in play. Useful for identifying luck vs. skill in contact outcomes — league average is typically around .300."
+      - name: woba
+        description: "Weighted on-base average. Linear weights offensive value metric, scaled to look like OBP."
+      - name: bb_pct
+        description: "Walk rate (BB/PA)."
+      - name: k_pct
+        description: "Strikeout rate (SO/PA)."
+      - name: bb_per_k
+        description: "Walk-to-strikeout ratio."
+      - name: gb
+        description: "Ground balls."
+      - name: fb
+        description: "Fly balls."
+      - name: ld
+        description: "Line drives."
+      - name: iffb
+        description: "Infield fly balls."
+      - name: gb_pct
+        description: "Ground ball rate."
+      - name: fb_pct
+        description: "Fly ball rate."
+      - name: ld_pct
+        description: "Line drive rate."
+      - name: iffb_pct
+        description: "Infield fly ball rate."
+      - name: gb_per_fb
+        description: "Ground ball to fly ball ratio."
+      - name: hr_per_fb
+        description: "Home run per fly ball rate."
+      - name: ifh
+        description: "Infield hits."
+      - name: ifh_pct
+        description: "Infield hit rate."
+      - name: bu
+        description: "Bunts."
+      - name: buh
+        description: "Bunt hits."
+      - name: buh_pct
+        description: "Bunt hit rate."
+      - name: war
+        description: "Fangraphs Wins Above Replacement (fWAR). Primary value metric used in downstream $/WAR models."
+      - name: l_war
+        description: "Luck-adjusted WAR. Adjusts fWAR for BABIP luck and HR/FB rate luck to estimate true talent level."
+      - name: wrc_plus
+        description: "Weighted Runs Created Plus. Park- and league-adjusted offensive production index. 100 = league average, higher is better."
+      - name: wrc
+        description: "Weighted Runs Created. Raw run creation estimate."
+      - name: wraa
+        description: "Weighted Runs Above Average. Offensive runs above a league-average hitter."
+      - name: rar
+        description: "Runs above replacement (total, all components)."
+      - name: bat
+        description: "Batting runs above average (WAR component)."
+      - name: fld
+        description: "Fielding runs above average (WAR component)."
+      - name: def_runs
+        description: "Defensive runs saved. Combines UZR fielding runs and positional adjustment. Used in downstream mart joins."
+      - name: off
+        description: "Offensive runs above average (WAR component, includes baserunning)."
+      - name: rep
+        description: "Replacement level runs (WAR component). Represents the baseline value of a freely available player."
+      - name: pos
+        description: "Positional adjustment runs (WAR component). Rewards harder defensive positions."
+      - name: spd
+        description: "Speed score. Composite baserunning speed metric (0-10 scale)."
+      - name: bsr
+        description: "Baserunning runs above average. Covers all baserunning events including stolen bases."
+      - name: wsb
+        description: "Weighted stolen base runs. Linear weights value of stolen base attempts."
+      - name: ubr
+        description: "Ultimate baserunning. Measures non-stolen-base baserunning decisions (taking extra bases, avoiding outs)."
+      - name: wgdp
+        description: "Weighted grounded into double play runs. Penalty for above-average GIDP tendency."
+      - name: wpa
+        description: "Win probability added. Cumulative leverage-weighted contribution to winning games."
+      - name: minus_wpa
+        description: "WPA accumulated from negative plate appearance outcomes only."
+      - name: plus_wpa
+        description: "WPA accumulated from positive plate appearance outcomes only."
+      - name: wpa_per_li
+        description: "WPA divided by leverage index. Context-neutral performance — removes the effect of clutch situations."
+      - name: re24
+        description: "Run expectancy based on 24 base-out states. Total run value added above average."
+      - name: rew
+        description: "RE24 converted to wins."
+      - name: pli
+        description: "Average leverage index. Measures average pressure of plate appearance situations faced."
+      - name: phli
+        description: "Pinch-hit leverage index. Average leverage of pinch-hit situations."
+      - name: clutch
+        description: "Clutch score. Positive values indicate better performance in high-leverage situations than overall."
+      - name: lg
+        description: "League (AL or NL)."
+      - name: ev
+        description: "Average exit velocity (mph) on contact."
+      - name: la
+        description: "Average launch angle (degrees) on contact."
+      - name: barrels
+        description: "Barrel count. Statcast-defined optimal exit velocity and launch angle combinations that produce elite results."
+      - name: barrel_pct
+        description: "Barrel rate per plate appearance."
+      - name: maxev
+        description: "Maximum exit velocity (mph). Measures peak contact quality."
+      - name: hardhit
+        description: "Hard-hit ball count (exit velocity >= 95 mph)."
+      - name: hardhit_pct
+        description: "Hard-hit rate."
+      - name: events
+        description: "Total batted ball events tracked by Statcast."
+      - name: xba
+        description: "Expected batting average based on exit velocity and launch angle. Separates contact quality from luck."
+      - name: xslg
+        description: "Expected slugging percentage based on Statcast contact data."
+      - name: xwoba
+        description: "Expected wOBA based on Statcast contact data. Useful for identifying over- or under-performing hitters."
+      - name: o_swing_pct
+        description: "Chase rate — swings on pitches outside the strike zone."
+      - name: z_swing_pct
+        description: "Zone swing rate — swings on pitches inside the strike zone."
+      - name: swing_pct
+        description: "Overall swing rate."
+      - name: o_contact_pct
+        description: "Contact rate on swings at pitches outside the strike zone."
+      - name: z_contact_pct
+        description: "Contact rate on swings at pitches inside the strike zone."
+      - name: contact_pct
+        description: "Overall contact rate on swings."
+      - name: zone_pct
+        description: "Percentage of pitches seen in the strike zone."
+      - name: f_strike_pct
+        description: "First-pitch strike rate (from the pitcher's perspective)."
+      - name: swstr_pct
+        description: "Swinging strike rate. One of the strongest predictors of strikeout rate."
+      - name: cstr_pct
+        description: "Called strike rate."
+      - name: csw_pct
+        description: "Called strikes plus whiffs rate (CSW%). Combined measure of strike-generation."
+      - name: pace
+        description: "Average time between pitches (seconds) as a batter."
+      - name: pull_pct
+        description: "Pull side batted ball rate."
+      - name: cent_pct
+        description: "Center field batted ball rate."
+      - name: oppo_pct
+        description: "Opposite field batted ball rate."
+      - name: soft_pct
+        description: "Soft contact rate."
+      - name: med_pct
+        description: "Medium contact rate."
+      - name: hard_pct
+        description: "Hard contact rate (Fangraphs batted ball classification, distinct from Statcast hardhit_pct)."
+      - name: tto_pct
+        description: "Three true outcomes rate — (HR + BB + SO) / PA."
+      - name: fb_pct_pitch
+        description: "Fastball usage rate seen (pitch type breakdown)."
+      - name: fbv
+        description: "Average fastball velocity (mph) of pitchers faced."
+      - name: sl_pct
+        description: "Slider usage rate seen."
+      - name: slv
+        description: "Average slider velocity (mph) of pitchers faced."
+      - name: ct_pct
+        description: "Cutter usage rate seen."
+      - name: ctv
+        description: "Average cutter velocity (mph) of pitchers faced."
+      - name: cb_pct
+        description: "Curveball usage rate seen."
+      - name: cbv
+        description: "Average curveball velocity (mph) of pitchers faced."
+      - name: ch_pct
+        description: "Changeup usage rate seen."
+      - name: chv
+        description: "Average changeup velocity (mph) of pitchers faced."
+      - name: sf_pct
+        description: "Split-finger fastball usage rate seen."
+      - name: sfv
+        description: "Average splitter velocity (mph) of pitchers faced."
+      - name: kn_pct
+        description: "Knuckleball usage rate seen."
+      - name: knv
+        description: "Average knuckleball velocity (mph) of pitchers faced."
+      - name: xx_pct
+        description: "Unknown/unclassified pitch usage rate seen."
+      - name: po_pct
+        description: "Pitch-out usage rate seen."
+      - name: wfb
+        description: "Fastball pitch value — total runs above average vs. fastballs faced."
+      - name: wsl
+        description: "Slider pitch value — total runs above average vs. sliders faced."
+      - name: wct
+        description: "Cutter pitch value."
+      - name: wcb
+        description: "Curveball pitch value."
+      - name: wch
+        description: "Changeup pitch value."
+      - name: wsf
+        description: "Splitter pitch value."
+      - name: wkn
+        description: "Knuckleball pitch value."
+      - name: wfb_per_c
+        description: "Fastball pitch value per 100 fastballs seen."
+      - name: wsl_per_c
+        description: "Slider pitch value per 100 sliders seen."
+      - name: wct_per_c
+        description: "Cutter pitch value per 100 cutters seen."
+      - name: wcb_per_c
+        description: "Curveball pitch value per 100 curveballs seen."
+      - name: wch_per_c
+        description: "Changeup pitch value per 100 changeups seen."
+      - name: wsf_per_c
+        description: "Splitter pitch value per 100 splitters seen."
+      - name: wkn_per_c
+        description: "Knuckleball pitch value per 100 knuckleballs seen."
+      - name: avg_plus
+        description: "Batting average scaled to league and park average (100 = average, higher is better)."
+      - name: bb_pct_plus
+        description: "Walk rate scaled to league average."
+      - name: k_pct_plus
+        description: "Strikeout rate scaled to league average (lower is better for batters)."
+      - name: obp_plus
+        description: "OBP scaled to league and park average."
+      - name: slg_plus
+        description: "SLG scaled to league and park average."
+      - name: iso_plus
+        description: "ISO scaled to league and park average."
+      - name: babip_plus
+        description: "BABIP scaled to league average."
+      - name: ld_plus_pct
+        description: "Line drive rate scaled to league average."
+      - name: gb_pct_plus
+        description: "Ground ball rate scaled to league average."
+      - name: fb_pct_plus
+        description: "Fly ball rate scaled to league average."
+      - name: hr_per_fb_pct_plus
+        description: "HR/FB rate scaled to league average."
+      - name: pull_pct_plus
+        description: "Pull rate scaled to league average."
+      - name: cent_pct_plus
+        description: "Center field rate scaled to league average."
+      - name: oppo_pct_plus
+        description: "Opposite field rate scaled to league average."
+      - name: soft_pct_plus
+        description: "Soft contact rate scaled to league average."
+      - name: med_pct_plus
+        description: "Medium contact rate scaled to league average."
+      - name: hard_pct_plus
+        description: "Hard contact rate scaled to league average."
+      - name: frm
+        description: "Catcher framing runs. Non-null for catchers only."
+      - name: ph
+        description: "Pinch hit plate appearances."
+      - name: pitches
+        description: "Total pitches seen."
+      - name: balls
+        description: "Total balls seen."
+      - name: strikes
+        description: "Total strikes seen."
+      - name: dollar_value_estimate
+        description: "Dollar value estimate (Fangraphs internal contract valuation)."
+
+  - name: stg_pitching
+    description: >
+      Fangraphs player pitching stats 2021-2025, sourced from the pybaseball API.
+      One row per player per team per season. Includes traditional counting stats,
+      ERA estimators (FIP, xFIP, SIERA, xERA), park-adjusted scaled metrics (ERA-,
+      FIP-), Statcast contact data, plate discipline, pitch type/value breakdowns,
+      Stuff+/Location+/Pitching+ grades per pitch type, and WAR components.
+      Columns with _sc suffix are Statcast-sourced variants; columns with _pi suffix
+      are PITCHf/x-sourced variants of the same plate discipline metrics.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [player_id, season]
+    columns:
+      - name: player_id
+        description: "Fangraphs player ID (renamed from idfg). VARCHAR to match payroll."
+        tests:
+          - not_null
+      - name: player_name
+        description: "Player full name (renamed from name)."
+        tests:
+          - not_null
+      - name: team
+        description: "Team abbreviation. Traded pitchers appear once per team stint plus a totals row."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: abbreviation
+              config:
+                where: "team not in ('- - -', 'SFG', 'SDP', 'CHW', 'WSN', 'KCR', 'TBR', 'ATH')"
+      - name: season
+        description: "MLB season year."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: age
+        description: "Player age during the season."
+      - name: age_rng
+        description: "Age range bucket used in Fangraphs aging curve analysis."
+      - name: w
+        description: "Wins."
+      - name: l
+        description: "Losses."
+      - name: g
+        description: "Games pitched."
+      - name: gs
+        description: "Games started."
+      - name: cg
+        description: "Complete games."
+      - name: sho
+        description: "Shutouts."
+      - name: sv
+        description: "Saves."
+      - name: bs
+        description: "Blown saves."
+      - name: hld
+        description: "Holds."
+      - name: sd
+        description: "Saves/hold opportunities converted in multi-inning situations (Shutdown)."
+      - name: md
+        description: "Meltdowns — blown save or loss in a high-leverage situation."
+      - name: ip
+        description: "Innings pitched."
+      - name: start_ip
+        description: "Innings pitched as a starter."
+      - name: relief_ip
+        description: "Innings pitched as a reliever."
+      - name: starting
+        description: "Runs prevented as a starter."
+      - name: relieving
+        description: "Runs prevented as a reliever."
+      - name: tbf
+        description: "Total batters faced."
+      - name: h
+        description: "Hits allowed."
+      - name: r
+        description: "Runs allowed."
+      - name: er
+        description: "Earned runs allowed."
+      - name: hr
+        description: "Home runs allowed."
+      - name: bb
+        description: "Walks issued."
+      - name: ibb
+        description: "Intentional walks issued."
+      - name: hbp
+        description: "Hit batters."
+      - name: wp
+        description: "Wild pitches."
+      - name: bk
+        description: "Balks."
+      - name: so
+        description: "Strikeouts."
+      - name: rs
+        description: "Run support received."
+      - name: gb
+        description: "Ground balls induced."
+      - name: fb
+        description: "Fly balls induced."
+      - name: ld
+        description: "Line drives allowed."
+      - name: iffb
+        description: "Infield fly balls induced. Infield popups are near-automatic outs, so high rates benefit pitchers."
+      - name: ifh
+        description: "Infield hits allowed."
+      - name: bu
+        description: "Bunts against."
+      - name: buh
+        description: "Bunt hits allowed."
+      - name: balls
+        description: "Total balls thrown."
+      - name: strikes
+        description: "Total strikes thrown."
+      - name: pitches
+        description: "Total pitches thrown."
+      - name: pulls
+        description: "Early hooks — games where the starter was removed before completing 5 innings."
+      - name: era
+        description: "Earned run average."
+      - name: fip
+        description: "Fielding Independent Pitching. ERA estimator based only on strikeouts, walks, HBP, and home runs — removes defense from the equation."
+      - name: xfip
+        description: "Expected FIP. Normalizes HR/FB rate to league average to further reduce luck. Better predictor of future ERA than ERA itself."
+      - name: siera
+        description: "Skill-Interactive ERA. FIP variant that accounts for batted ball mix and strikeout-walk interactions."
+      - name: tera
+        description: "True ERA. Deserved runs-based ERA estimator using granular batted ball data."
+      - name: xera
+        description: "Expected ERA based on Statcast contact quality metrics."
+      - name: botera
+        description: "BOT (bat-tracking-based) expected ERA."
+      - name: whip
+        description: "Walks plus hits per inning pitched."
+      - name: avg
+        description: "Batting average against."
+      - name: babip
+        description: "Batting average on balls in play against. High values often reflect bad luck or poor defense behind the pitcher."
+      - name: lob_pct
+        description: "Left-on-base percentage. Strand rate for baserunners — league average around 72%. High rates tend to regress."
+      - name: gb_per_fb
+        description: "Ground ball to fly ball ratio."
+      - name: ld_pct
+        description: "Line drive rate allowed."
+      - name: gb_pct
+        description: "Ground ball rate induced."
+      - name: fb_pct
+        description: "Fly ball rate induced."
+      - name: iffb_pct
+        description: "Infield fly ball rate induced."
+      - name: hr_per_fb
+        description: "Home run per fly ball rate allowed. League-normalized in xFIP."
+      - name: ifh_pct
+        description: "Infield hit rate allowed."
+      - name: buh_pct
+        description: "Bunt hit rate allowed."
+      - name: k_per_9
+        description: "Strikeouts per 9 innings."
+      - name: bb_per_9
+        description: "Walks per 9 innings."
+      - name: k_per_bb
+        description: "Strikeout-to-walk ratio."
+      - name: h_per_9
+        description: "Hits per 9 innings."
+      - name: hr_per_9
+        description: "Home runs per 9 innings."
+      - name: rs_per_9
+        description: "Run support per 9 innings."
+      - name: k_pct
+        description: "Strikeout rate (SO/TBF)."
+      - name: bb_pct
+        description: "Walk rate (BB/TBF)."
+      - name: k_bb_pct
+        description: "K% minus BB%. Simple command/dominance metric."
+      - name: e_f
+        description: "ERA minus FIP. Large positive values suggest the pitcher may regress toward their FIP."
+      - name: kwera
+        description: "K-Walk ERA. Simplified ERA estimator using only K and BB rates."
+      - name: era_minus
+        description: "ERA scaled to league and park average. 100 = average, lower is better."
+      - name: fip_minus
+        description: "FIP scaled to league and park average. 100 = average, lower is better."
+      - name: xfip_minus
+        description: "xFIP scaled to league and park average."
+      - name: k_per_9_plus
+        description: "K/9 scaled to league average (100 = average, higher is better)."
+      - name: bb_per_9_plus
+        description: "BB/9 scaled to league average (100 = average, lower is better for pitchers)."
+      - name: k_per_bb_plus
+        description: "K/BB scaled to league average."
+      - name: h_per_9_plus
+        description: "H/9 scaled to league average."
+      - name: hr_per_9_plus
+        description: "HR/9 scaled to league average."
+      - name: avg_plus
+        description: "Batting average against scaled to league and park average."
+      - name: whip_plus
+        description: "WHIP scaled to league average."
+      - name: babip_plus
+        description: "BABIP against scaled to league average."
+      - name: lob_pct_plus
+        description: "Strand rate scaled to league average."
+      - name: k_pct_plus
+        description: "K% scaled to league average."
+      - name: bb_pct_plus
+        description: "BB% scaled to league average."
+      - name: ld_pct_plus
+        description: "Line drive rate allowed scaled to league average."
+      - name: gb_pct_plus
+        description: "Ground ball rate scaled to league average."
+      - name: fb_pct_plus
+        description: "Fly ball rate scaled to league average."
+      - name: hr_per_fb_pct_plus
+        description: "HR/FB rate scaled to league average."
+      - name: pull_pct_plus
+        description: "Pull rate allowed scaled to league average."
+      - name: cent_pct_plus
+        description: "Center field rate allowed scaled to league average."
+      - name: oppo_pct_plus
+        description: "Opposite field rate allowed scaled to league average."
+      - name: soft_pct_plus
+        description: "Soft contact rate scaled to league average."
+      - name: med_pct_plus
+        description: "Medium contact rate scaled to league average."
+      - name: hard_pct_plus
+        description: "Hard contact rate allowed scaled to league average."
+      - name: war
+        description: "Fangraphs Wins Above Replacement (fWAR). Primary value metric used in downstream $/WAR models."
+      - name: ra9_war
+        description: "WAR calculated using RA/9 instead of FIP. Reflects actual runs allowed including defense and luck."
+      - name: rar
+        description: "Runs above replacement (total)."
+      - name: bip_wins
+        description: "WAR component from balls in play outcomes."
+      - name: lob_wins
+        description: "WAR component from strand rate — the LOB% contribution to wins."
+      - name: fdp_wins
+        description: "WAR component from fielding-dependent plays."
+      - name: wpa
+        description: "Win probability added."
+      - name: minus_wpa
+        description: "WPA from negative outcomes."
+      - name: plus_wpa
+        description: "WPA from positive outcomes."
+      - name: wpa_per_li
+        description: "Context-neutral WPA — removes leverage from the calculation."
+      - name: re24
+        description: "Run expectancy based on 24 base-out states."
+      - name: rew
+        description: "RE24 converted to wins."
+      - name: pli
+        description: "Average leverage index. Higher for closers and high-leverage relievers."
+      - name: inli
+        description: "Inherited runner leverage index."
+      - name: gmli
+        description: "Game leverage index."
+      - name: exli
+        description: "Excitement index."
+      - name: clutch
+        description: "Clutch score in high-leverage situations."
+      - name: pull_pct
+        description: "Pull side batted ball rate allowed."
+      - name: cent_pct
+        description: "Center field batted ball rate allowed."
+      - name: oppo_pct
+        description: "Opposite field batted ball rate allowed."
+      - name: soft_pct
+        description: "Soft contact rate allowed."
+      - name: med_pct
+        description: "Medium contact rate allowed."
+      - name: hard_pct
+        description: "Hard contact rate allowed (Fangraphs classification, distinct from Statcast hardhit_pct)."
+      - name: tto_pct
+        description: "Three true outcomes rate (HR + BB + SO) / TBF."
+      - name: ev
+        description: "Average exit velocity against (mph)."
+      - name: la
+        description: "Average launch angle against (degrees)."
+      - name: barrels
+        description: "Barrels allowed."
+      - name: barrel_pct
+        description: "Barrel rate allowed per batted ball event."
+      - name: maxev
+        description: "Maximum exit velocity against (mph)."
+      - name: hardhit
+        description: "Hard-hit balls allowed (exit velocity >= 95 mph)."
+      - name: hardhit_pct
+        description: "Hard-hit rate allowed."
+      - name: events
+        description: "Total batted ball events (Statcast)."
+      - name: cstr_pct
+        description: "Called strike rate."
+      - name: csw_pct
+        description: "Called strikes plus whiffs rate (CSW%)."
+      - name: pace
+        description: "Average time between pitches (seconds) as a pitcher."
+      - name: frm
+        description: "Catcher framing runs for the pitcher's battery (context metric, not a pitcher skill)."
+      - name: o_swing_pct
+        description: "Opponent chase rate — swings induced on pitches outside the strike zone."
+      - name: z_swing_pct
+        description: "Opponent zone swing rate."
+      - name: swing_pct
+        description: "Opponent overall swing rate."
+      - name: o_contact_pct
+        description: "Opponent contact rate outside the zone."
+      - name: z_contact_pct
+        description: "Opponent contact rate inside the zone."
+      - name: contact_pct
+        description: "Opponent overall contact rate on swings."
+      - name: zone_pct
+        description: "Percentage of pitches thrown in the strike zone."
+      - name: f_strike_pct
+        description: "First-pitch strike rate."
+      - name: swstr_pct
+        description: "Swinging strike rate. One of the strongest predictors of strikeout rate."
+      - name: fb_pct_pitch
+        description: "Fastball usage rate."
+      - name: fbv
+        description: "Average fastball velocity (mph)."
+      - name: sl_pct
+        description: "Slider usage rate."
+      - name: slv
+        description: "Average slider velocity (mph)."
+      - name: ct_pct
+        description: "Cutter usage rate."
+      - name: ctv
+        description: "Average cutter velocity (mph)."
+      - name: cb_pct
+        description: "Curveball usage rate."
+      - name: cbv
+        description: "Average curveball velocity (mph)."
+      - name: ch_pct
+        description: "Changeup usage rate."
+      - name: chv
+        description: "Average changeup velocity (mph)."
+      - name: sf_pct
+        description: "Splitter usage rate."
+      - name: sfv
+        description: "Average splitter velocity (mph)."
+      - name: kn_pct
+        description: "Knuckleball usage rate."
+      - name: knv
+        description: "Average knuckleball velocity (mph)."
+      - name: xx_pct
+        description: "Unknown/unclassified pitch usage rate."
+      - name: po_pct
+        description: "Pitch-out usage rate."
+      - name: wfb
+        description: "Fastball pitch value — runs above average per fastball thrown."
+      - name: wsl
+        description: "Slider pitch value."
+      - name: wct
+        description: "Cutter pitch value."
+      - name: wcb
+        description: "Curveball pitch value."
+      - name: wch
+        description: "Changeup pitch value."
+      - name: wsf
+        description: "Splitter pitch value."
+      - name: wkn
+        description: "Knuckleball pitch value."
+      - name: wfb_per_c
+        description: "Fastball pitch value per 100 fastballs thrown."
+      - name: wsl_per_c
+        description: "Slider pitch value per 100 sliders thrown."
+      - name: wct_per_c
+        description: "Cutter pitch value per 100 cutters thrown."
+      - name: wcb_per_c
+        description: "Curveball pitch value per 100 curveballs thrown."
+      - name: wch_per_c
+        description: "Changeup pitch value per 100 changeups thrown."
+      - name: wsf_per_c
+        description: "Splitter pitch value per 100 splitters thrown."
+      - name: wkn_per_c
+        description: "Knuckleball pitch value per 100 knuckleballs thrown."
+      - name: stuff_plus
+        description: "Stuff+ overall grade. Measures raw pitch quality (movement, velocity, shape) independent of command or results. 100 = average, higher is better."
+      - name: location_plus
+        description: "Location+ overall grade. Measures pitch placement quality independent of stuff. 100 = average."
+      - name: pitching_plus
+        description: "Pitching+ overall grade. Combined stuff and location assessment. 100 = average."
+      - name: botovr
+        description: "BOT (bat-tracking) overall pitcher grade."
+      - name: botstf
+        description: "BOT stuff grade based on bat-tracking data."
+      - name: botcmd
+        description: "BOT command grade based on bat-tracking data."
+      - name: botxrv100
+        description: "BOT expected run value per 100 pitches."
+      - name: stf_plus_ch
+        description: "Stuff+ grade for changeup."
+      - name: loc_plus_ch
+        description: "Location+ grade for changeup."
+      - name: pit_plus_ch
+        description: "Pitching+ grade for changeup."
+      - name: stf_plus_cu
+        description: "Stuff+ grade for curveball."
+      - name: loc_plus_cu
+        description: "Location+ grade for curveball."
+      - name: pit_plus_cu
+        description: "Pitching+ grade for curveball."
+      - name: stf_plus_fa
+        description: "Stuff+ grade for four-seam fastball."
+      - name: loc_plus_fa
+        description: "Location+ grade for four-seam fastball."
+      - name: pit_plus_fa
+        description: "Pitching+ grade for four-seam fastball."
+      - name: stf_plus_si
+        description: "Stuff+ grade for sinker."
+      - name: loc_plus_si
+        description: "Location+ grade for sinker."
+      - name: pit_plus_si
+        description: "Pitching+ grade for sinker."
+      - name: stf_plus_sl
+        description: "Stuff+ grade for slider."
+      - name: loc_plus_sl
+        description: "Location+ grade for slider."
+      - name: pit_plus_sl
+        description: "Pitching+ grade for slider."
+      - name: stf_plus_kc
+        description: "Stuff+ grade for knuckle-curve."
+      - name: loc_plus_kc
+        description: "Location+ grade for knuckle-curve."
+      - name: pit_plus_kc
+        description: "Pitching+ grade for knuckle-curve."
+      - name: stf_plus_fc
+        description: "Stuff+ grade for cutter."
+      - name: loc_plus_fc
+        description: "Location+ grade for cutter."
+      - name: pit_plus_fc
+        description: "Pitching+ grade for cutter."
+      - name: stf_plus_fs
+        description: "Stuff+ grade for splitter."
+      - name: loc_plus_fs
+        description: "Location+ grade for splitter."
+      - name: pit_plus_fs
+        description: "Pitching+ grade for splitter."
+      - name: stf_plus_fo
+        description: "Stuff+ grade for forkball."
+      - name: loc_plus_fo
+        description: "Location+ grade for forkball."
+      - name: pit_plus_fo
+        description: "Pitching+ grade for forkball."
+      - name: dollar_value_estimate
+        description: "Dollar value estimate (Fangraphs internal contract valuation)."
+
+  - name: stg_payroll_summary
+    description: >
+      Fangraphs luxury tax (Competitive Balance Tax) payroll estimates by team,
+      2021-2025. One row per team per season. The luxury_tax_payroll_estimate
+      reflects total CBT obligations, which can differ from actual salary spend
+      due to contract structuring, deferred money, and prorated signing bonuses.
+      Used in team_war_value to compare actual payroll against CBT commitments.
+    columns:
+      - name: team
+        description: "Team name (matches team names in stg_payroll_players for joining)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_name
+      - name: season
+        description: "MLB season year."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: luxury_tax_payroll_estimate
+        description: >
+          Estimated Competitive Balance Tax payroll for the team in the given season.
+          Differs from total_salary in team_war_value due to contract structuring,
+          deferred money, and adjustments not captured in raw salary figures.
+      - name: source_file
+        description: "Source Excel file name the row was parsed from, for lineage tracing."
+
+  - name: stg_payroll_other_payments
+    description: >
+      Non-roster payroll obligations by team, 2021-2025. Covers trade subsidies,
+      contract buyouts, retained salary on traded players, and other CBT adjustments
+      not tied to an active player. One row per payment event.
+      Not currently joined into the $/WAR models — useful for full payroll
+      reconciliation against luxury tax figures.
+    columns:
+      - name: team
+        description: "Team name carrying the payment obligation."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_name
+      - name: season
+        description: "MLB season year the payment applies to."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: payment_type
+        description: "Category of the obligation (e.g. 'Trade Subsidy', 'Buyout', 'Retained Salary')."
+      - name: payment_description
+        description: "Free-text description, typically including player name and transaction context."
+      - name: amount
+        description: "Dollar amount of the obligation in the given season."
+      - name: future_amounts
+        description: "VARIANT (JSON array) of future payment installments for multi-year subsidies or buyout schedules."
+      - name: source_file
+        description: "Source Excel file name the row was parsed from, for lineage tracing."

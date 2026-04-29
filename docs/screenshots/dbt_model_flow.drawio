@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="dbt Lineage" id="lineage1">
+    <mxGraphModel dx="1340" dy="1198" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=28;fontStyle=5;fontColor=#64748B;" value="dbt Model Flow" vertex="1">
+          <mxGeometry height="44" width="1320" x="40" y="24" as="geometry" />
+        </mxCell>
+        <mxCell id="rawCard" parent="1" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=1;dashed=1;dashPattern=2 3;" value="" vertex="1">
+          <mxGeometry height="540" width="380" x="40" y="92" as="geometry" />
+        </mxCell>
+        <mxCell id="rawHdr" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=18;fontStyle=5;fontColor=#64748B;" value="RAW" vertex="1">
+          <mxGeometry height="32" width="332" x="64" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="stgCard" parent="1" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=1;dashed=1;dashPattern=2 3;" value="" vertex="1">
+          <mxGeometry height="540" width="380" x="510" y="92" as="geometry" />
+        </mxCell>
+        <mxCell id="stgHdr" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=18;fontStyle=5;fontColor=#64748B;" value="STAGING" vertex="1">
+          <mxGeometry height="32" width="332" x="534" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="martCard" parent="1" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=1;dashed=1;dashPattern=2 3;" value="" vertex="1">
+          <mxGeometry height="540" width="380" x="980" y="92" as="geometry" />
+        </mxCell>
+        <mxCell id="martHdr" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=18;fontStyle=5;fontColor=#64748B;" value="MARTS" vertex="1">
+          <mxGeometry height="32" width="332" x="1004" y="108" as="geometry" />
+        </mxCell>
+        <mxCell id="R1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#64748B;spacing=12;" value="payroll_players" vertex="1">
+          <mxGeometry height="48" width="332" x="64" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="R2" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#64748B;spacing=12;" value="payroll_summary" vertex="1">
+          <mxGeometry height="48" width="332" x="64" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="R3" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#64748B;spacing=12;" value="payroll_other_payments" vertex="1">
+          <mxGeometry height="48" width="332" x="64" y="284" as="geometry" />
+        </mxCell>
+        <mxCell id="R4" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#64748B;spacing=12;" value="batting" vertex="1">
+          <mxGeometry height="48" width="332" x="64" y="348" as="geometry" />
+        </mxCell>
+        <mxCell id="R5" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#64748B;spacing=12;" value="pitching" vertex="1">
+          <mxGeometry height="48" width="332" x="64" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="S1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10B981;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#10B981;spacing=12;" value="stg_payroll_players" vertex="1">
+          <mxGeometry height="48" width="332" x="534" y="156" as="geometry" />
+        </mxCell>
+        <mxCell id="S2" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10B981;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#10B981;spacing=12;" value="stg_payroll_summary" vertex="1">
+          <mxGeometry height="48" width="332" x="534" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="S3" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10B981;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#10B981;spacing=12;" value="stg_payroll_other_payments" vertex="1">
+          <mxGeometry height="48" width="332" x="534" y="284" as="geometry" />
+        </mxCell>
+        <mxCell id="S4" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10B981;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#10B981;spacing=12;" value="stg_batting" vertex="1">
+          <mxGeometry height="48" width="332" x="534" y="348" as="geometry" />
+        </mxCell>
+        <mxCell id="S5" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10B981;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#10B981;spacing=12;" value="stg_pitching" vertex="1">
+          <mxGeometry height="48" width="332" x="534" y="412" as="geometry" />
+        </mxCell>
+        <mxCell id="M1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#A78BFA;strokeColor=#A78BFA;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=5;fontColor=#FFFFFF;spacing=12;" value="dollars_per_war" vertex="1">
+          <mxGeometry height="56" width="332" x="1004" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="M2" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#A78BFA;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#A78BFA;spacing=12;" value="dollars_per_war_qualified" vertex="1">
+          <mxGeometry height="48" width="332" x="1004" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="M3" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#A78BFA;strokeColor=#A78BFA;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=5;fontColor=#FFFFFF;spacing=12;" value="team_war_value" vertex="1">
+          <mxGeometry height="56" width="332" x="1004" y="372" as="geometry" />
+        </mxCell>
+        <mxCell id="M4" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#A78BFA;strokeWidth=2;fontFamily=Inter;fontSize=15;fontStyle=4;fontColor=#A78BFA;spacing=12;" value="dim_teams" vertex="1">
+          <mxGeometry height="48" width="332" x="1004" y="472" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" parent="1" style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#94A3B8;strokeWidth=1;dashed=1;dashPattern=2 3;" value="" vertex="1">
+          <mxGeometry height="92" width="380" x="40" y="664" as="geometry" />
+        </mxCell>
+        <mxCell id="legendHdr" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=14;fontStyle=5;fontColor=#64748B;" value="Legend" vertex="1">
+          <mxGeometry height="20" width="200" x="60" y="672" as="geometry" />
+        </mxCell>
+        <mxCell id="legendKey1" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#10B981;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="20" width="32" x="60" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="legendLbl1" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=12;fontColor=#64748B;" value="Views: staging" vertex="1">
+          <mxGeometry height="20" width="200" x="100" y="700" as="geometry" />
+        </mxCell>
+        <mxCell id="legendKey2" parent="1" style="rounded=1;arcSize=25;whiteSpace=wrap;html=1;fillColor=#A78BFA;strokeColor=#A78BFA;strokeWidth=2;" value="" vertex="1">
+          <mxGeometry height="20" width="32" x="60" y="728" as="geometry" />
+        </mxCell>
+        <mxCell id="legendLbl2" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontFamily=Inter;fontSize=12;fontColor=#64748B;" value="Tables: marts (key models highlighted)" vertex="1">
+          <mxGeometry height="20" width="280" x="100" y="728" as="geometry" />
+        </mxCell>
+        <mxCell id="eR1S1" edge="1" parent="1" source="R1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#94A3B8;strokeWidth=2;endArrow=block;endFill=1;" target="S1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eR2S2" edge="1" parent="1" source="R2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#94A3B8;strokeWidth=2;endArrow=block;endFill=1;" target="S2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eR3S3" edge="1" parent="1" source="R3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#94A3B8;strokeWidth=2;endArrow=block;endFill=1;" target="S3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eR4S4" edge="1" parent="1" source="R4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#94A3B8;strokeWidth=2;endArrow=block;endFill=1;" target="S4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eR5S5" edge="1" parent="1" source="R5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#94A3B8;strokeWidth=2;endArrow=block;endFill=1;" target="S5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eS1M1" edge="1" parent="1" source="S1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.25;strokeColor=#3B82F6;strokeWidth=2;endArrow=block;endFill=1;" target="M1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eS4M1" edge="1" parent="1" source="S4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#3B82F6;strokeWidth=2;endArrow=block;endFill=1;" target="M1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eS5M1" edge="1" parent="1" source="S5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=1;exitY=0.5;entryX=0;entryY=0.75;strokeColor=#3B82F6;strokeWidth=2;endArrow=block;endFill=1;" target="M1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eM1M2" edge="1" parent="1" source="M1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#3B82F6;strokeWidth=2;endArrow=block;endFill=1;" target="M2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eM2M3" edge="1" parent="1" source="M2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#3B82F6;strokeWidth=2;endArrow=block;endFill=1;" target="M3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eM4M3" edge="1" parent="1" source="M4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;exitX=0.5;exitY=0;entryX=0.5;entryY=1;strokeColor=#3B82F6;strokeWidth=2;endArrow=block;endFill=1;" target="M3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,368 @@
+version: 2
+
+models:
+  - name: dollars_per_war
+    description: >
+      Core $/WAR mart joining Fangraphs payroll data to batting and pitching stats
+      for MLB seasons 2021-2025. One row per player per team per season.
+      Includes all players regardless of playing time — use dollars_per_war_qualified
+      for analysis requiring meaningful sample sizes.
+      Two-way players (e.g. Shohei Ohtani) have batting_war and pitching_war summed
+      into total_war. WAR can be negative; dollars_per_war will be NULL when total_war <= 0.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - player_id
+              - season
+              - team
+    columns:
+      - name: player_id
+        description: "Fangraphs player ID (VARCHAR to accommodate 'sa' prefix international players, though those are excluded upstream)."
+        tests:
+          - not_null
+      - name: player_name
+        description: "Player full name."
+        tests:
+          - not_null
+      - name: team
+        description: "Team name for the season (matches Fangraphs payroll team naming and dim_teams.team_name)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_name
+      - name: season
+        description: "MLB season year."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: contract_status
+        description: "Player's contract classification for the season."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  [
+                    "Guaranteed",
+                    "Eligible For Arb",
+                    "Not Yet Eligible For Arb",
+                    "No Longer On 40-Man Roster",
+                  ]
+      - name: salary
+        description: "Actual salary paid in the given season."
+        tests:
+          - not_null
+      - name: aav
+        description: "Average annual value of the player's contract. NULL for arb and pre-arb players."
+      - name: age
+        description: "Player age during the season."
+      - name: batting_war
+        description: "Fangraphs batting WAR for the season. 0 for pitchers who do not appear in the batting stats table."
+      - name: pitching_war
+        description: "Fangraphs pitching WAR for the season. 0 for batters who do not appear in the pitching stats table."
+      - name: total_war
+        description: "Sum of batting and pitching WAR. For two-way players, reflects combined value. Cumulative counting stat — affected by playing time."
+        tests:
+          - not_null
+      - name: pa
+        description: "Plate appearances. NULL for pitchers with no batting stats."
+      - name: wrc_plus
+        description: "Weighted Runs Created Plus. Park- and league-adjusted offensive index. 100 = average. NULL for pitchers."
+      - name: woba
+        description: "Weighted on-base average. NULL for pitchers."
+      - name: def_runs
+        description: "Defensive runs saved (UZR-based). NULL for pitchers."
+      - name: ip
+        description: "Innings pitched. NULL for batters with no pitching stats."
+      - name: era
+        description: "Earned run average. NULL for batters."
+      - name: fip
+        description: "Fielding Independent Pitching. NULL for batters."
+      - name: xfip
+        description: "Expected FIP (HR/FB normalized to league average). NULL for batters."
+      - name: era_minus
+        description: "ERA scaled to league and park average (100 = average, lower is better). NULL for batters."
+      - name: fip_minus
+        description: "FIP scaled to league and park average (100 = average, lower is better). NULL for batters."
+      - name: player_type
+        description: "Batter, pitcher, or two_way based on presence in the batting/pitching stats tables."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["batter", "pitcher", "two_way"]
+      - name: league_avg_dollars_per_war
+        description: "Season-level average $/WAR across all players with positive WAR. Used to benchmark individual player value."
+      - name: war_tier
+        description: "Fangraphs WAR tier classification. Values: replacement_or_worse (<0), scrub (0-1), role_player (1-2), solid_starter (2-3), good_player (3-4), all_star (4-5), superstar (5-6), mvp_level (6+)."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  [
+                    "replacement_or_worse",
+                    "scrub",
+                    "role_player",
+                    "solid_starter",
+                    "good_player",
+                    "all_star",
+                    "superstar",
+                    "mvp_level",
+                  ]
+      - name: value_above_market
+        description: >
+          Dollar value of surplus or deficit relative to the season's average $/WAR.
+          Calculated as (league_avg_dollars_per_war * total_war) - salary.
+          Positive = player produced more value than their salary implies at market rates.
+          NULL when total_war <= 0.
+      - name: dollars_per_war
+        description: "Actual salary divided by total WAR. NULL when total_war <= 0."
+      - name: aav_per_war
+        description: "Contract AAV divided by total WAR. NULL when total_war <= 0 or AAV is NULL."
+      - name: war_per_600_pa
+        description: >
+          Projected WAR over a full 600 PA season (total_war / pa * 600). Useful for
+          rate-based player evaluation, but overstates value for platoon players,
+          defensive replacements, and injury-shortened seasons. Use total_war for
+          contract value analysis.
+      - name: war_per_180_ip
+        description: >
+          Projected WAR over a full 180 IP season (total_war / ip * 180). Useful for
+          pitcher evaluation, but overstates value for closers and high-leverage
+          relievers facing favorable matchups. Use total_war for contract value analysis.
+
+  - name: dollars_per_war_qualified
+    description: >
+      Filtered version of dollars_per_war requiring meaningful playing time.
+      Batters must have >= 100 PA, pitchers >= 30 IP. Two-way players pass regardless
+      of thresholds. Removes injury-shortened seasons that skew $/WAR extremes.
+      All column definitions match dollars_per_war — refer to that model for full descriptions.
+      Compare to dollars_per_war to identify cases where injury or platoon usage
+      impacted contract value delivery.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - player_id
+              - season
+              - team
+    columns:
+      - name: player_id
+        tests:
+          - not_null
+      - name: player_name
+        description: "Player full name."
+      - name: team
+        description: "Team name for the season (matches Fangraphs payroll team naming and dim_teams.team_name)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_name
+      - name: season
+        tests:
+          - not_null
+      - name: contract_status
+        description: "Player's contract classification for the season."
+      - name: salary
+        description: "Actual salary paid in the given season."
+        tests:
+          - not_null
+      - name: aav
+        description: "Average annual value of the player's contract. NULL for arb and pre-arb players."
+      - name: age
+        description: "Player age during the season."
+      - name: batting_war
+        description: "Fangraphs batting WAR. 0 for pitchers."
+      - name: pitching_war
+        description: "Fangraphs pitching WAR. 0 for batters."
+      - name: total_war
+        description: "Combined batting and pitching WAR."
+        tests:
+          - not_null
+      - name: pa
+        description: "Plate appearances. NULL for pitchers."
+      - name: wrc_plus
+        description: "Weighted Runs Created Plus. NULL for pitchers."
+      - name: woba
+        description: "Weighted on-base average. NULL for pitchers."
+      - name: def_runs
+        description: "Defensive runs saved. NULL for pitchers."
+      - name: ip
+        description: "Innings pitched. NULL for batters."
+      - name: era
+        description: "Earned run average. NULL for batters."
+      - name: fip
+        description: "Fielding Independent Pitching. NULL for batters."
+      - name: xfip
+        description: "Expected FIP. NULL for batters."
+      - name: era_minus
+        description: "ERA scaled to league and park average. NULL for batters."
+      - name: fip_minus
+        description: "FIP scaled to league and park average. NULL for batters."
+      - name: player_type
+        description: "Batter, pitcher, or two_way."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["batter", "pitcher", "two_way"]
+      - name: league_avg_dollars_per_war
+        description: "Season-level average $/WAR across all players with positive WAR."
+      - name: war_tier
+        description: "Fangraphs WAR tier classification."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  [
+                    "replacement_or_worse",
+                    "scrub",
+                    "role_player",
+                    "solid_starter",
+                    "good_player",
+                    "all_star",
+                    "superstar",
+                    "mvp_level",
+                  ]
+      - name: value_above_market
+        description: "Surplus value relative to league-average $/WAR. NULL when total_war <= 0."
+      - name: dollars_per_war
+        description: "Actual salary divided by total WAR. NULL when total_war <= 0."
+      - name: aav_per_war
+        description: "Contract AAV divided by total WAR. NULL when total_war <= 0 or AAV is NULL."
+      - name: war_per_600_pa
+        description: "Projected WAR over 600 PA. NULL for pitchers."
+      - name: war_per_180_ip
+        description: "Projected WAR over 180 IP. NULL for batters."
+
+  - name: team_war_value
+    description: >
+      Team-level aggregation of payroll efficiency. One row per team per season.
+      Built from dollars_per_war_qualified so only includes players with meaningful
+      playing time (>= 100 PA for batters, >= 30 IP for pitchers).
+      Joins to stg_payroll_summary for luxury tax comparison and to the dim_teams
+      seed for league/division metadata.
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - team
+              - season
+    columns:
+      - name: team
+        description: "Team name (matches Fangraphs team name used throughout the pipeline)."
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_teams')
+                field: team_name
+      - name: season
+        description: "MLB season year."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2021, 2022, 2023, 2024, 2025]
+      - name: total_salary
+        description: "Sum of qualified player salaries for the team and season. Does not include non-roster payments (buyouts, trade subsidies) from stg_payroll_other_payments."
+        tests:
+          - not_null
+      - name: total_war
+        description: "Sum of total_war across all qualified players on the team."
+        tests:
+          - not_null
+      - name: total_batting_war
+        description: "Sum of batting_war across all qualified players."
+      - name: total_pitching_war
+        description: "Sum of pitching_war across all qualified players."
+      - name: dollars_per_war
+        description: "Team-level $/WAR — total_salary divided by total_war. NULL if total_war <= 0."
+      - name: roster_size
+        description: "Count of qualified players contributing to the team's WAR total."
+        tests:
+          - not_null
+      - name: batters
+        description: "Count of qualified batters (player_type = 'batter') on the roster."
+      - name: pitchers
+        description: "Count of qualified pitchers (player_type = 'pitcher') on the roster."
+      - name: two_way_players
+        description: "Count of two-way players (player_type = 'two_way') on the roster."
+      - name: guaranteed_contracts
+        description: "Count of players on guaranteed (multi-year signed) contracts."
+      - name: arb_eligible
+        description: "Count of players who are arbitration-eligible."
+      - name: pre_arb
+        description: "Count of players not yet eligible for arbitration."
+      - name: mvp_level_players
+        description: "Count of players at the mvp_level WAR tier (>= 6 WAR)."
+      - name: superstar_players
+        description: "Count of players at the superstar WAR tier (5-6 WAR)."
+      - name: all_star_players
+        description: "Count of players at the all_star WAR tier (4-5 WAR)."
+      - name: good_players
+        description: "Count of players at the good_player WAR tier (3-4 WAR)."
+      - name: solid_starters
+        description: "Count of players at the solid_starter WAR tier (2-3 WAR)."
+      - name: role_players
+        description: "Count of players at the role_player WAR tier (1-2 WAR)."
+      - name: scrubs
+        description: "Count of players at the scrub WAR tier (0-1 WAR)."
+      - name: replacement_or_worse
+        description: "Count of players at the replacement_or_worse WAR tier (< 0 WAR)."
+      - name: luxury_tax_payroll_estimate
+        description: "Team's estimated Competitive Balance Tax payroll from stg_payroll_summary. May differ from total_salary due to deferred money and contract structuring."
+      - name: team_id
+        description: "Three-letter team ID from dim_teams (e.g. 'NYY', 'LAD')."
+      - name: abbreviation
+        description: "Team abbreviation from dim_teams."
+      - name: league
+        description: "League — AL or NL."
+      - name: division
+        description: "Division — East, Central, or West."
+      - name: war_per_million
+        description: "WAR generated per $1M of total_salary. Higher values indicate more payroll efficiency."
+      - name: luxury_tax_vs_salary_delta
+        description: "luxury_tax_payroll_estimate minus total_salary. Positive values mean the team's CBT obligation exceeds their qualified-player salary (e.g. due to non-roster payments or deferred money)."
+      - name: total_war_rank
+        description: "Rank of total_war within the season (1 = most WAR). Computed with RANK() so ties share a rank."
+      - name: efficiency_rank
+        description: "Rank of war_per_million within the season (1 = most efficient). Computed with RANK() so ties share a rank. NULL teams with total_salary = 0 are ranked last."
+
+  - name: dim_players
+    description: >
+      Player dimension table. One row per player, derived from dollars_per_war.
+      Provides a deduplicated player registry with career span in the dataset
+      and most recent age. Useful for lookups and joining player metadata to
+      other analyses without duplicating per-season rows.
+      Note: player_type reflects the player's most recent role — two-way players
+      who transitioned to pitching-only will show as pitcher.
+    columns:
+      - name: player_id
+        description: "Fangraphs player ID. Primary key."
+        tests:
+          - not_null
+          - unique
+      - name: player_name
+        description: "Player full name."
+        tests:
+          - not_null
+      - name: current_age
+        description: "Most recent age recorded across all seasons in the dataset (max age by player_id)."
+      - name: first_season
+        description: "Earliest season the player appears in the dataset (2021-2025)."
+      - name: last_season
+        description: "Most recent season the player appears in the dataset."
+      - name: player_type
+        description: "Player's role classification from their most recent season — batter, pitcher, or two_way."
+        tests:
+          - accepted_values:
+              arguments:
+                values: ["batter", "pitcher", "two_way"]

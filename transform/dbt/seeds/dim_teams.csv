@@ -1,0 +1,31 @@
+team_id,team_name,abbreviation,league,division
+LAA,Angels,LAA,AL,West
+HOU,Astros,HOU,AL,West
+OAK,Athletics,OAK,AL,West
+TOR,Blue Jays,TOR,AL,East
+ATL,Braves,ATL,NL,East
+MIL,Brewers,MIL,NL,Central
+STL,Cardinals,STL,NL,Central
+CHC,Cubs,CHC,NL,Central
+ARI,Diamondbacks,ARI,NL,West
+LAD,Dodgers,LAD,NL,West
+SF,Giants,SF,NL,West
+CLE,Guardians,CLE,AL,Central
+SEA,Mariners,SEA,AL,West
+MIA,Marlins,MIA,NL,East
+NYM,Mets,NYM,NL,East
+WSH,Nationals,WSH,NL,East
+BAL,Orioles,BAL,AL,East
+SD,Padres,SD,NL,West
+PHI,Phillies,PHI,NL,East
+PIT,Pirates,PIT,NL,Central
+TEX,Rangers,TEX,AL,West
+TB,Rays,TB,AL,East
+BOS,Red Sox,BOS,AL,East
+CIN,Reds,CIN,NL,Central
+COL,Rockies,COL,NL,West
+KC,Royals,KC,AL,Central
+DET,Tigers,DET,AL,Central
+MIN,Twins,MIN,AL,Central
+CWS,White Sox,CWS,AL,Central
+NYY,Yankees,NYY,AL,East
